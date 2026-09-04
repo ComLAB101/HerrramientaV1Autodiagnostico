@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LAB101 · Autodiagnóstico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:ital,wght@0,200;0,300;0,400;0,600;0,700;0,900;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFFFFF;
+    --surface:#F5F7FC;
+    --surface-2:#EDF1FA;
+    --hairline:#DCE3F0;
+    --ink:#26065D;
+    --ink-soft:#5B5A72;
+    --te:#0CB7F2;
+    --ux:#6715D9;
+    --for:#FF6060;
+    --inn:#4FA30E;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Source Sans Pro',sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:920px;
+    margin:0 auto;
+    padding:clamp(20px,5vw,56px) clamp(16px,5vw,32px) 80px;
+  }
+  .eyebrow{
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:18px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:8px;height:8px;
+    background:var(--ux);
+    transform:rotate(45deg);
+    flex-shrink:0;
+  }
+  .tagline{
+    font-size:14px;
+    font-weight:600;
+    font-style:italic;
+    color:var(--ux);
+    margin:-8px 0 20px;
+  }
+  h1{
+    font-weight:900;
+    font-size:clamp(30px,4.8vw,46px);
+    line-height:1.06;
+    letter-spacing:-.01em;
+    margin:0 0 18px;
+  }
+  h1 .thin{ font-weight:200; }
+  .lede{
+    font-size:clamp(15px,1.8vw,17px);
+    line-height:1.6;
+    color:var(--ink-soft);
+    max-width:60ch;
+    margin:0 0 34px;
+  }
+  .dial-block{ display:flex; flex-direction:column; align-items:center; margin:8px 0 36px; }
+  .dial-caption{ font-size:12px; font-weight:600; letter-spacing:.08em; color:var(--ink-soft); margin-top:14px; text-align:center; }
+  svg.dial{ width:min(320px,80vw); height:auto; overflow:visible; }
+  .dial-tick{ stroke:var(--hairline); stroke-width:1; }
+  .dial-ring{ fill:none; stroke:var(--hairline); stroke-width:1; }
+  .dial-axis-line{ stroke:var(--hairline); stroke-width:1; }
+  .dial-poly{ fill-opacity:.14; stroke-width:2; transition:all .5s ease; }
+  .dial-vertex{ transition:all .5s ease; }
+  .dial-label{ font-size:12px; font-weight:700; fill:var(--ink-soft); text-anchor:middle; }
+  .dial-label.active{ fill:var(--ink); }
+  .dial-pct{ font-size:11px; font-weight:700; text-anchor:middle; }
+
+  .btn{
+    font-size:14px; font-weight:700; letter-spacing:.02em;
+    background:var(--ink); color:#fff; border:none; padding:15px 28px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:10px; transition:transform .15s ease, background .15s ease;
+  }
+  .btn:hover{ background:#3A1080; transform:translateY(-1px); }
+  .btn:active{ transform:translateY(0); }
+  .btn-ghost{ background:transparent; color:var(--ink); border:1.5px solid var(--hairline); }
+  .btn-ghost:hover{ background:var(--surface); border-color:#C3CEE6; }
+  .btn:disabled{ opacity:.35; cursor:not-allowed; transform:none; }
+  .btn:disabled:hover{ background:var(--ink); }
+
+  .chips{ display:grid; grid-template-columns:repeat(2,1fr); gap:1px; background:var(--hairline); border:1px solid var(--hairline); margin-bottom:40px; }
+  @media(max-width:560px){ .chips{ grid-template-columns:1fr; } }
+  .chip{ background:var(--bg); padding:20px 22px; }
+  .chip .tag{ font-size:11.5px; font-weight:700; letter-spacing:.06em; display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .tag .dot{ width:8px; height:8px; flex-shrink:0; border-radius:50%; }
+  .chip p{ margin:0; font-size:13.5px; line-height:1.55; color:var(--ink-soft); }
+  .chip .name{ font-size:15.5px; font-weight:700; margin:0 0 6px; }
+
+  .screen{ display:none; }
+  .screen.active{ display:block; }
+
+  .legend{
+    border:1px solid var(--hairline); background:var(--surface);
+    padding:16px 18px; margin-bottom:32px; font-size:12.5px; line-height:1.7; color:var(--ink-soft);
+  }
+  .legend b{ color:var(--ink); }
+  .legend-row{ display:flex; gap:10px; margin-bottom:4px; }
+  .legend-row span.n{ font-weight:700; color:var(--ink); width:14px; flex-shrink:0; }
+
+  .progress-row{ display:flex; justify-content:space-between; align-items:baseline; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:10px; }
+  .progress-bar{ display:flex; gap:3px; height:6px; margin-bottom:38px; border-radius:3px; overflow:hidden; }
+  .progress-seg{ flex:1; background:var(--hairline); position:relative; overflow:hidden; }
+  .progress-seg i{ display:block; height:100%; width:0%; transition:width .3s ease; }
+  .q-section-label{ font-size:12.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .q-section-label .dot{ width:9px; height:9px; border-radius:50%; }
+  .q-sub{ font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:14px; }
+  .q-text{ font-size:clamp(19px,2.8vw,24px); line-height:1.34; font-weight:600; margin:0 0 30px; min-height:3.4em; }
+
+  .likert{ display:flex; gap:8px; margin-bottom:10px; }
+  .likert-opt{
+    flex:1; border:1.5px solid var(--hairline); background:var(--bg); color:var(--ink);
+    padding:14px 4px 10px; text-align:center; cursor:pointer; transition:border-color .15s ease, background .15s ease;
+  }
+  .likert-opt .num{ font-size:18px; font-weight:900; display:block; margin-bottom:5px; }
+  .likert-opt .lbl{ font-size:10.5px; font-weight:600; line-height:1.25; color:var(--ink-soft); display:block; min-height:2.4em; }
+  .likert-opt:hover{ border-color:#C3CEE6; }
+  .likert-opt.selected{ background:var(--surface-2); border-color:var(--ink); }
+  .likert-opt.selected .lbl{ color:var(--ink); }
+  .nav-row{ display:flex; justify-content:space-between; margin-top:20px; }
+
+  .index-card{ border:1px solid var(--hairline); background:var(--surface); padding:26px 28px; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:36px; }
+  .index-card .label{ font-size:12px; font-weight:700; color:var(--ink-soft); letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px; }
+  .index-card .value{ font-size:40px; font-weight:900; }
+  .index-card .badge{ font-size:12.5px; font-weight:700; border:1.5px solid var(--hairline); padding:8px 14px; }
+
+  .axis-rows{ display:flex; flex-direction:column; gap:1px; background:var(--hairline); border:1px solid var(--hairline); margin-bottom:40px; }
+  .axis-row{ background:var(--bg); padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .axis-row .name{ font-size:15.5px; font-weight:700; display:flex; align-items:center; gap:9px; }
+  .axis-row .dot{ width:9px; height:9px; flex-shrink:0; border-radius:50%; }
+  .axis-row .meta{ display:flex; align-items:center; gap:14px; font-size:12.5px; font-weight:700; color:var(--ink-soft); }
+  .axis-row .lvl{ padding:3px 9px; border:1.5px solid var(--hairline); }
+
+  .priority-card{ border:2px solid var(--hairline); background:var(--surface); padding:30px 28px; margin-bottom:14px; }
+  .priority-card .eyebrow2{ font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:10px; }
+  .priority-card h2{ font-size:25px; font-weight:900; margin:0 0 14px; display:flex; align-items:center; gap:10px; }
+  .priority-card h2 .dot{ width:11px; height:11px; border-radius:50%; }
+  .priority-card p{ margin:0; font-size:15.5px; line-height:1.7; color:#3A3950; max-width:66ch; }
+  .draft-flag{ font-size:12px; font-weight:700; color:#B45309; margin-bottom:34px; }
+
+  .actions{ display:flex; gap:14px; flex-wrap:wrap; }
+
+  .field-group{ margin-bottom:22px; }
+  .field-label{ display:block; font-size:13px; font-weight:700; color:var(--ink-soft); margin-bottom:8px; }
+  .field-label .req{ color:var(--for); }
+  .field-input{
+    width:100%; font-family:'Source Sans Pro',sans-serif; font-size:16px; font-weight:400;
+    color:var(--ink); background:var(--bg); border:1.5px solid var(--hairline);
+    padding:14px 16px; outline:none; transition:border-color .15s ease;
+  }
+  .field-input:focus{ border-color:var(--ux); }
+  .field-input::placeholder{ color:#A9AABE; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ LANDING ============ -->
+  <section class="screen active" id="screen-landing">
+    <div class="eyebrow">LAB101</div>
+    <p class="tagline">Somos parte de la anatomía creativa del país</p>
+    <h1><span class="thin">Autodiagnóstico de</span><br>innovación y transformación digital</h1>
+    <p class="lede">20 afirmaciones, cuatro líneas de lectura. Al final vas a tener un mapa de madurez de tu organización — y la línea exacta donde conviene enfocar el siguiente paso.</p>
+
+    <div class="dial-block">
+      <svg class="dial" viewBox="0 0 300 300" id="dial-landing"></svg>
+      <div class="dial-caption">EL INSTRUMENTO SE COMPLETA CON TUS RESPUESTAS</div>
+    </div>
+
+    <div class="chips">
+      <div class="chip">
+        <div class="tag"><span class="dot" style="background:var(--te)"></span>TECNOLOGÍAS EMERGENTES</div>
+        <p class="name">Adopción tecnológica</p>
+        <p>Analítica y datos, IA, tecnologías de vanguardia, ciberseguridad y capacidad de desarrollo.</p>
+      </div>
+      <div class="chip">
+        <div class="tag"><span class="dot" style="background:var(--ux)"></span>EXPERIENCIA DE USUARIO (UX/UI)</div>
+        <p class="name">Diseño centrado en las personas</p>
+        <p>Accesibilidad, investigación de usuarios, prototipado, sistemas de diseño y capacidades internas.</p>
+      </div>
+      <div class="chip">
+        <div class="tag"><span class="dot" style="background:var(--for)"></span>FORMACIÓN A LA MEDIDA</div>
+        <p class="name">Talento y competencias digitales</p>
+        <p>Gestión de brechas, curva de aprendizaje, tiempo de formación y alineación estratégica.</p>
+      </div>
+      <div class="chip">
+        <div class="tag"><span class="dot" style="background:var(--inn)"></span>PROCESOS DE INNOVACIÓN</div>
+        <p class="name">Innovación como método</p>
+        <p>Innovación abierta, diagnóstico de entorno, hoja de ruta, experimentación ágil y transferencia de habilidades.</p>
+      </div>
+    </div>
+
+    <button class="btn" onclick="showCapture()">Comenzar autodiagnóstico →</button>
+  </section>
+
+  <!-- ============ CAPTURE ============ -->
+  <section class="screen" id="screen-capture">
+    <div class="eyebrow">LAB101</div>
+    <h1><span class="thin">Antes de empezar,</span><br>cuéntanos quién responde</h1>
+    <p class="lede">Con esto vinculamos el resultado a tu organización. No compartimos esta información con nadie más.</p>
+
+    <div class="field-group">
+      <label class="field-label" for="f-org">Organización <span class="req">*</span></label>
+      <input class="field-input" id="f-org" type="text" placeholder="Nombre de tu organización" oninput="validateCapture()">
+    </div>
+    <div class="field-group">
+      <label class="field-label" for="f-name">Nombre de quien responde</label>
+      <input class="field-input" id="f-name" type="text" placeholder="Nombre y apellido">
+    </div>
+    <div class="field-group">
+      <label class="field-label" for="f-email">Correo <span class="req">*</span></label>
+      <input class="field-input" id="f-email" type="email" placeholder="nombre@organizacion.com" oninput="validateCapture()">
+    </div>
+
+    <div class="nav-row">
+      <button class="btn btn-ghost" onclick="backToLanding()">← Atrás</button>
+      <button class="btn" id="btn-capture-next" onclick="startQuiz()" disabled>Comenzar autodiagnóstico →</button>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="screen" id="screen-quiz">
+    <div class="legend">
+      <b>Escala de madurez</b> — responde cada afirmación según qué tan presente está hoy en tu organización.
+      <div style="margin-top:10px">
+        <div class="legend-row"><span class="n">1</span><span>Nulo / No se realiza</span></div>
+        <div class="legend-row"><span class="n">2</span><span>Inicial / Informal (sin metodología)</span></div>
+        <div class="legend-row"><span class="n">3</span><span>En desarrollo / Ocasional</span></div>
+        <div class="legend-row"><span class="n">4</span><span>Consolidado / Con metodología y frecuencia</span></div>
+        <div class="legend-row"><span class="n">5</span><span>Optimizado / Referente e integrado en la cultura</span></div>
+      </div>
+    </div>
+
+    <div class="progress-row">
+      <span id="progress-label">Pregunta 1 de 20</span>
+      <span id="progress-section">Tecnologías Emergentes</span>
+    </div>
+    <div class="progress-bar" id="progress-bar"></div>
+
+    <div class="q-section-label" id="q-axis-label"></div>
+    <div class="q-sub" id="q-sub"></div>
+    <p class="q-text" id="q-text"></p>
+
+    <div class="likert" id="likert-row"></div>
+
+    <div class="nav-row">
+      <button class="btn btn-ghost" id="btn-prev" onclick="prevQ()">← Anterior</button>
+      <button class="btn" id="btn-next" onclick="nextQ()" disabled>Siguiente →</button>
+    </div>
+  </section>
+
+  <!-- ============ RESULTS ============ -->
+  <section class="screen" id="screen-results">
+    <div class="eyebrow">Resultado · LAB101</div>
+    <h1><span class="thin">Tu mapa de</span><br>madurez digital</h1>
+    <p class="lede" id="results-org-lede">Esto es lo que tus respuestas dicen hoy sobre las cuatro líneas.</p>
+
+    <div class="dial-block">
+      <svg class="dial" viewBox="0 0 300 300" id="dial-results"></svg>
+    </div>
+
+    <div class="index-card">
+      <div>
+        <div class="label">Índice LAB101</div>
+        <div class="value" id="index-value">0%</div>
+      </div>
+      <div class="badge" id="index-badge">—</div>
+    </div>
+
+    <div class="axis-rows" id="axis-rows"></div>
+
+    <div class="priority-card" id="priority-card"></div>
+    <div class="draft-flag" id="draft-flag" style="display:none">⚠ Falta el mensaje oficial de "área prioritaria" para Procesos de Innovación — el texto que ves es un borrador temporal.</div>
+
+    <div class="actions">
+      <button class="btn" onclick="resetQuiz()">Repetir autodiagnóstico</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+/* ============ SCALE ============ */
+const SCALE = [
+  {v:1, short:'Nulo', lbl:'Nulo / No se realiza'},
+  {v:2, short:'Inicial', lbl:'Inicial / Informal (sin metodología)'},
+  {v:3, short:'En desarrollo', lbl:'En desarrollo / Ocasional'},
+  {v:4, short:'Consolidado', lbl:'Consolidado / Con metodología y frecuencia'},
+  {v:5, short:'Optimizado', lbl:'Optimizado / Referente e integrado en la cultura'}
+];
+function levelLabelForScore(pct){
+  if(pct<=20) return SCALE[0].lbl;
+  if(pct<=40) return SCALE[1].lbl;
+  if(pct<=60) return SCALE[2].lbl;
+  if(pct<=80) return SCALE[3].lbl;
+  return SCALE[4].lbl;
+}
+function levelShortForScore(pct){
+  if(pct<=20) return SCALE[0].short;
+  if(pct<=40) return SCALE[1].short;
+  if(pct<=60) return SCALE[2].short;
+  if(pct<=80) return SCALE[3].short;
+  return SCALE[4].short;
+}
+
+/* ============ DATA (fuente: documento del cliente; falta mensaje oficial de INN) ============ */
+const AXES = [
+  {
+    key:'te', name:'Tecnologías Emergentes', short:'TE', hex:'#0CB7F2', isDraft:false,
+    questions:[
+      {sub:'Analítica, Big Data y Datos abiertos', text:'¿Su organización aprovecha la analítica, la visualización de datos o repositorios de datos abiertos para sustentar la toma de decisiones estratégicas?'},
+      {sub:'Inteligencia artificial y machine learning', text:'¿Utilizan o integran algoritmos de Inteligencia Artificial / Aprendizaje Automático para optimizar, automatizar o personalizar sus procesos o servicios?'},
+      {sub:'Tecnologías de vanguardia (IoT, VR/AR, Blockchain)', text:'¿Exploran o aplican tecnologías como Internet de las Cosas (IoT), Realidad Virtual/Aumentada o Blockchain en sus productos o cadena de valor?'},
+      {sub:'Ciberseguridad y protección digital', text:'¿Disponen de protocolos, estándares y herramientas sólidas de ciberseguridad para proteger la información y los activos digitales de la organización?'},
+      {sub:'Desarrollo de software y asistencia técnica', text:'¿Cuentan con la asistencia técnica, consultoría o capacidad de desarrollo necesaria para adoptar e integrar eficientemente herramientas tecnológicas avanzadas?'}
+    ],
+    priorityTitle:'Tecnologías Emergentes',
+    priorityMsg:'Existe una oportunidad clave en la modernización de tu infraestructura digital. Fortalecer esta área te permitirá integrar analítica de datos, IA o ciberseguridad para escalar tus operaciones.'
+  },
+  {
+    key:'ux', name:'Experiencia de Usuario (UX/UI)', short:'UX', hex:'#6715D9', isDraft:false,
+    questions:[
+      {sub:'Diseño universal y accesibilidad', text:'¿En qué medida sus productos y herramientas digitales están adaptados con criterios de diseño universal (accesibilidad para personas con diversas capacidades, contraste, tipografías y adaptación a diferentes modos de visualización y dispositivos)?'},
+      {sub:'Investigación de usuarios (User Research)', text:'¿Con qué frecuencia investigan y analizan a profundidad las necesidades, comportamientos y puntos de dolor de sus usuarios finales antes y durante el desarrollo de una solución digital?'},
+      {sub:'Pruebas de usabilidad y prototipado', text:'¿Qué tan habitual es en su organización construir prototipos previos al desarrollo e iterarlos mediante pruebas continuas con usuarios reales?'},
+      {sub:'Arquitectura de la información y sistemas de diseño', text:'¿Cuentan con una arquitectura de información estructurada y un Sistema de Diseño (Design System) estandarizado que garantice la consistencia visual y funcional de todos sus productos?'},
+      {sub:'Consultoría y formación en capacidades UX/UI', text:'¿Su equipo interno cuenta con las capacidades de diseño UX/UI necesarias o recurre a asesoría estratégica para tomar decisiones de desarrollo centradas en el usuario?'}
+    ],
+    priorityTitle:'Experiencia e Interfaz de Usuario (UX/UI)',
+    priorityMsg:'Tus productos digitales necesitan centrarse más en el usuario final. Fortalecer aspectos como la accesibilidad universal, la arquitectura de información y las pruebas de usabilidad te ayudará a aumentar la adopción y satisfacción de tus clientes.'
+  },
+  {
+    key:'for', name:'Formación a la Medida', short:'FOR', hex:'#FF6060', isDraft:false,
+    questions:[
+      {sub:'Gestión de brechas y resolución de tareas críticas', text:'En mi organización, la identificación de brechas de conocimiento y la asignación de perfiles especializados para resolver hitos críticos del proyecto se realiza de forma:'},
+      {sub:'Control del impacto operativo y curva de aprendizaje', text:'El control sobre los reprocesos, sobrecostos y pérdidas de tiempo causados por la curva de aprendizaje de los equipos se encuentra en un nivel:'},
+      {sub:'Tiempo destinado a formación continua (más allá de lo normativo)', text:'El tiempo que la organización destina para fortalecer capacidades técnicas y de innovación (más allá de las capacitaciones obligatorias/normativas) está:'},
+      {sub:'Respaldo a la formación externa y tiempo protegido', text:'La concesión de tiempo laboral para que los colaboradores participen en capacitaciones, diplomados o programas externos es:'},
+      {sub:'Alineación estratégica del aprendizaje', text:'El propósito de las capacitaciones y la articulación entre el desarrollo profesional del empleado y las metas estratégicas de la empresa está:'}
+    ],
+    priorityTitle:'Línea de Formación a la Medida',
+    priorityMsg:'Tu organización presenta brechas transversales entre el desarrollo de habilidades de tu equipo y las metas estratégicas del negocio. Fortalecer esta área te permitirá diseñar e implementar rutas de aprendizaje 100% personalizadas, estructuradas desde un diagnóstico profundo de tus capacidades actuales para cerrar vacíos de conocimiento, optimizar curvas de aprendizaje y transformar la formación en proyectos reales de innovación e impacto operativo.'
+  },
+  {
+    key:'inn', name:'Procesos de Innovación', short:'INN', hex:'#4FA30E', isDraft:true,
+    questions:[
+      {sub:'Innovación abierta y colaboración externa', text:'¿Su organización colabora con actores externos (comunidades, startups, sector público u otras entidades) para resolver desafíos complejos mediante innovación abierta o social?'},
+      {sub:'Diagnóstico y análisis de entorno', text:'¿Realizan diagnósticos y análisis periódicos del entorno para identificar tendencias, brechas y oportunidades reales antes de lanzar iniciativas innovadoras?'},
+      {sub:'Hoja de ruta y estrategia de innovación', text:'¿Tienen definida una hoja de ruta o estrategia clara de innovación alineada con los objetivos generales de la organización?'},
+      {sub:'Experimentación ágil y validación (MVP)', text:'¿Cuentan con un método formal para experimentar, validar de manera ágil (pilotos, productos mínimos viables) y llevar las ideas innovadoras a la implementación práctica?'},
+      {sub:'Transferencia de habilidades de innovación', text:'¿Existen mecanismos y programas internos para transferir y consolidar habilidades de innovación en el personal de la empresa?'}
+    ],
+    priorityTitle:'Procesos de Innovación',
+    priorityMsg:'[PENDIENTE — falta el mensaje oficial para el área prioritaria de Procesos de Innovación] Tu organización tiene ideas, pero aún no un sistema que las lleve a resultados. Fortalecer esta línea te permitirá instalar una metodología formal de experimentación, validación ágil y transferencia de habilidades de innovación, alineada con tu estrategia.'
+  }
+];
+
+/* ============ SHEETS INTEGRATION ============ */
+/* 1. Crea una Google Sheet.
+   2. Extensiones > Apps Script, pega el código que te di en el chat.
+   3. Implementar > Nueva implementación > Aplicación web > "Cualquier usuario" > Implementar.
+   4. Copia esa URL y pégala abajo, entre las comillas. */
+const APPS_SCRIPT_URL = 'PEGA_AQUI_TU_URL_DE_APPS_SCRIPT';
+
+async function sendToSheet(payload){
+  if(!APPS_SCRIPT_URL.startsWith('https')) return; // no configurado todavía
+  try{
+    await fetch(APPS_SCRIPT_URL, {
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify(payload)
+    });
+  }catch(err){
+    console.warn('No se pudo registrar en Sheets:', err);
+  }
+}
+
+/* ============ CAPTURE ============ */
+let orgInfo = { organizacion:'', nombre:'', correo:'' };
+
+function showCapture(){
+  document.getElementById('screen-landing').classList.remove('active');
+  document.getElementById('screen-capture').classList.add('active');
+}
+function backToLanding(){
+  document.getElementById('screen-capture').classList.remove('active');
+  document.getElementById('screen-landing').classList.add('active');
+}
+function validateCapture(){
+  const org = document.getElementById('f-org').value.trim();
+  const email = document.getElementById('f-email').value.trim();
+  const valid = org.length>0 && /\S+@\S+\.\S+/.test(email);
+  document.getElementById('btn-capture-next').disabled = !valid;
+}
+
+/* ============ STATE ============ */
+let flatQuestions = [];
+AXES.forEach(axis=>{
+  axis.questions.forEach((q,i)=>{ flatQuestions.push({axisKey:axis.key, ...q, index:i}); });
+});
+let answers = new Array(flatQuestions.length).fill(null);
+let current = 0;
+
+/* ============ DIAL ============ */
+function polarPoint(cx,cy,r,angleDeg){
+  const a = (angleDeg-90) * Math.PI/180;
+  return [cx + r*Math.cos(a), cy + r*Math.sin(a)];
+}
+const DIAL_ANGLES = {te:0, ux:90, for:180, inn:270};
+
+function buildDialSVG(el, scores, highlightKey){
+  const cx=150, cy=150, maxR=118;
+  let s = '';
+  [0.25,0.5,0.75,1].forEach(f=>{
+    let pts = AXES.map(a=>polarPoint(cx,cy,maxR*f,DIAL_ANGLES[a.key]).join(',')).join(' ');
+    s += `<polygon class="dial-ring" points="${pts}" />`;
+  });
+  for(let d=0; d<360; d+=15){
+    const [x1,y1] = polarPoint(cx,cy,maxR+6,d);
+    const [x2,y2] = polarPoint(cx,cy,maxR+11,d);
+    s += `<line class="dial-tick" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" />`;
+  }
+  AXES.forEach(a=>{
+    const [x,y] = polarPoint(cx,cy,maxR,DIAL_ANGLES[a.key]);
+    s += `<line class="dial-axis-line" x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" />`;
+  });
+  if(scores){
+    let pts = AXES.map(a=>{
+      const r = (scores[a.key]/100)*maxR;
+      return polarPoint(cx,cy,r,DIAL_ANGLES[a.key]).join(',');
+    }).join(' ');
+    s += `<polygon class="dial-poly" points="${pts}" style="stroke:#26065D; fill:#26065D" />`;
+    AXES.forEach(a=>{
+      const r = (scores[a.key]/100)*maxR;
+      const [x,y] = polarPoint(cx,cy,r,DIAL_ANGLES[a.key]);
+      s += `<circle class="dial-vertex" cx="${x}" cy="${y}" r="4.5" fill="${a.hex}" />`;
+    });
+  }
+  AXES.forEach(a=>{
+    const [x,y] = polarPoint(cx,cy,maxR+28,DIAL_ANGLES[a.key]);
+    const active = a.key===highlightKey;
+    s += `<text class="dial-label${active?' active':''}" x="${x}" y="${y+4}">${a.short}</text>`;
+    if(scores){
+      const [px,py] = polarPoint(cx,cy,maxR+42,DIAL_ANGLES[a.key]);
+      s += `<text class="dial-pct" x="${px}" y="${py+4}" fill="${a.hex}">${Math.round(scores[a.key])}%</text>`;
+    }
+  });
+  el.innerHTML = s;
+}
+buildDialSVG(document.getElementById('dial-landing'), null, null);
+
+/* ============ QUIZ FLOW ============ */
+function startQuiz(){
+  orgInfo.organizacion = document.getElementById('f-org').value.trim();
+  orgInfo.nombre = document.getElementById('f-name').value.trim();
+  orgInfo.correo = document.getElementById('f-email').value.trim();
+
+  document.getElementById('screen-capture').classList.remove('active');
+  document.getElementById('screen-quiz').classList.add('active');
+  buildProgressBar();
+  renderQuestion();
+}
+function buildProgressBar(){
+  const bar = document.getElementById('progress-bar');
+  bar.innerHTML = '';
+  flatQuestions.forEach(q=>{
+    const axis = AXES.find(a=>a.key===q.axisKey);
+    const seg = document.createElement('div');
+    seg.className='progress-seg';
+    seg.innerHTML = `<i style="background:${axis.hex}"></i>`;
+    bar.appendChild(seg);
+  });
+}
+function renderQuestion(){
+  const q = flatQuestions[current];
+  const axis = AXES.find(a=>a.key===q.axisKey);
+
+  document.getElementById('progress-label').textContent = `Pregunta ${current+1} de ${flatQuestions.length}`;
+  document.getElementById('progress-section').textContent = axis.name;
+  document.getElementById('q-axis-label').innerHTML = `<span class="dot" style="background:${axis.hex}"></span><span style="color:${axis.hex}">${axis.name}</span>`;
+  document.getElementById('q-sub').textContent = q.sub;
+  document.getElementById('q-text').textContent = q.text;
+
+  document.querySelectorAll('.progress-seg i').forEach((el,i)=>{
+    el.style.width = i<=current ? '100%' : '0%';
+    el.style.opacity = i===current ? '1' : (i<current ? '0.55' : '1');
+  });
+
+  const row = document.getElementById('likert-row');
+  row.innerHTML = '';
+  SCALE.forEach(s=>{
+    const btn = document.createElement('div');
+    btn.className = 'likert-opt' + (answers[current]===s.v ? ' selected':'');
+    btn.innerHTML = `<span class="num">${s.v}</span><span class="lbl">${s.short}</span>`;
+    btn.onclick = ()=>{ answers[current]=s.v; renderQuestion(); };
+    row.appendChild(btn);
+  });
+
+  document.getElementById('btn-prev').style.visibility = current===0 ? 'hidden':'visible';
+  const nextBtn = document.getElementById('btn-next');
+  nextBtn.disabled = answers[current]===null;
+  nextBtn.textContent = current===flatQuestions.length-1 ? 'Ver resultados →' : 'Siguiente →';
+}
+function nextQ(){
+  if(answers[current]===null) return;
+  if(current < flatQuestions.length-1){ current++; renderQuestion(); }
+  else showResults();
+}
+function prevQ(){ if(current>0){ current--; renderQuestion(); } }
+
+/* ============ RESULTS ============ */
+function computeScores(){
+  const scores = {};
+  AXES.forEach(axis=>{
+    let sum=0;
+    axis.questions.forEach((_,i)=>{
+      const flatIdx = flatQuestions.findIndex(q=>q.axisKey===axis.key && q.index===i);
+      sum += answers[flatIdx];
+    });
+    scores[axis.key] = (sum/(axis.questions.length*5))*100;
+  });
+  return scores;
+}
+function showResults(){
+  document.getElementById('screen-quiz').classList.remove('active');
+  document.getElementById('screen-results').classList.add('active');
+
+  const scores = computeScores();
+  const avg = AXES.reduce((s,a)=>s+scores[a.key],0)/AXES.length;
+
+  const priorityAxis = [...AXES].sort((a,b)=>scores[a.key]-scores[b.key])[0];
+
+  if(orgInfo.organizacion){
+    document.getElementById('results-org-lede').textContent = `Esto es lo que las respuestas de ${orgInfo.organizacion} dicen hoy sobre las cuatro líneas.`;
+  }
+
+  sendToSheet({
+    fecha: new Date().toISOString(),
+    organizacion: orgInfo.organizacion,
+    nombre: orgInfo.nombre,
+    correo: orgInfo.correo,
+    indice: Math.round(avg),
+    te: Math.round(scores.te),
+    ux: Math.round(scores.ux),
+    for_: Math.round(scores.for),
+    inn: Math.round(scores.inn),
+    prioridad: priorityAxis.name
+  });
+
+  buildDialSVG(document.getElementById('dial-results'), scores, priorityAxis.key);
+
+  document.getElementById('index-value').textContent = Math.round(avg)+'%';
+  document.getElementById('index-badge').textContent = levelShortForScore(avg);
+
+  const rowsEl = document.getElementById('axis-rows');
+  rowsEl.innerHTML = '';
+  const ordered = [...AXES].sort((a,b)=>scores[a.key]-scores[b.key]);
+  ordered.forEach(axis=>{
+    const score = scores[axis.key];
+    const row = document.createElement('div');
+    row.className='axis-row';
+    row.innerHTML = `
+      <div class="name"><span class="dot" style="background:${axis.hex}"></span>${axis.name}</div>
+      <div class="meta">
+        <span>${Math.round(score)}%</span>
+        <span class="lvl" style="color:${axis.hex}; border-color:${axis.hex}66">${levelShortForScore(score)}</span>
+      </div>`;
+    rowsEl.appendChild(row);
+  });
+
+  const priorityCard = document.getElementById('priority-card');
+  priorityCard.style.borderColor = priorityAxis.hex;
+  priorityCard.innerHTML = `
+    <div class="eyebrow2">Área prioritaria a fortalecer</div>
+    <h2><span class="dot" style="background:${priorityAxis.hex}"></span>${priorityAxis.priorityTitle}</h2>
+    <p>${priorityAxis.priorityMsg}</p>
+  `;
+  document.getElementById('draft-flag').style.display = priorityAxis.isDraft ? 'block' : 'none';
+}
+function resetQuiz(){
+  answers = new Array(flatQuestions.length).fill(null);
+  current = 0;
+  orgInfo = { organizacion:'', nombre:'', correo:'' };
+  document.getElementById('f-org').value = '';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-email').value = '';
+  document.getElementById('btn-capture-next').disabled = true;
+  document.getElementById('screen-results').classList.remove('active');
+  document.getElementById('screen-landing').classList.add('active');
+}
+</script>
+</body>
+</html>
